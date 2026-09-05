@@ -107,13 +107,23 @@ Nocturne Piano/
 ├─ Music/               原创示范 MIDI
 ├─ src/                 C# / WPF 源码
 ├─ settings.json        默认键位与程序设置
+├─ LICENSE              MIT 开源许可证
 ├─ build.cmd            编译脚本
 ├─ test.cmd             测试脚本
 ├─ 使用说明.md          完整中文使用说明
 └─ 启动夜曲钢琴.lnk     桌面启动快捷方式
 ```
 
-## 说明
+## 许可证
 
-Pianoteq 是 Modartt 的产品与商标。本项目不是 Modartt 官方软件，不包含 Pianoteq 程序、音源或许可证；使用者需要自行合法安装并激活 Pianoteq。
+Nocturne 的原创代码以 [MIT License](LICENSE) 发布。
 
+MIT License 只适用于本仓库拥有版权的原创内容，不授予任何第三方软件、商标、音源、预设、MIDI 作品或其他第三方内容的权利。
+
+## 商标与非隶属声明
+
+- **Pianoteq** 是 **Modartt S.A.S.** 的商标或注册商标。本项目与 Modartt S.A.S. 不存在隶属、赞助、认证或官方认可关系。
+- **OpenAI** 和 **GPT** 是 OpenAI 的商标。本项目的初始实现由 gentleMar 使用 OpenAI GPT-6 / Codex 辅助完成；本项目与 OpenAI 不存在隶属、赞助、认证或官方认可关系。
+- 文中出现的第三方产品名称只用于说明兼容性和识别对应产品，相关权利归各自权利人所有。
+
+本项目不包含 Pianoteq 程序、音源、预设或许可证。使用者需要自行合法安装并激活 Pianoteq。
