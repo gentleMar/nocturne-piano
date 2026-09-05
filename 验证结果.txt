@@ -1,0 +1,15 @@
+﻿PASS: demo note count
+PASS: demo tempo and duration
+PASS: default mapping
+PASS: middle C naming
+PASS: format 1 tempo merge + running status + zero velocity
+PASS: reject malformed MIDI
+PASS: live Pianoteq RPC connection
+PASS: audio device running
+PASS: live note on/off + sustain RPC
+PASS: native MIDI playback advances
+PASS: MIDI pause
+PASS: MIDI seek
+
+PASS: UI playback, pause, stop, automatic loop, stop during loop, keyboard A, sustain toggle, mapping capture/save/default restore
+PASS: desktop shortcut launch and single instance

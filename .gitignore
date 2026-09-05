@@ -1,0 +1,5 @@
+src/bin/
+src/obj/
+*.tmp
+Music/River Flows in You.mid
+App/test-results.txt

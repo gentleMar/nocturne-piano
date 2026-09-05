@@ -1,0 +1,27 @@
+{
+  "PianoteqPath": "D:\\Music\\Modartt\\Pianoteq 9\\Pianoteq 9.exe",
+  "Velocity": 88,
+  "Transpose": 0,
+  "Mapping": {
+    "A": 60,
+    "W": 61,
+    "S": 62,
+    "E": 63,
+    "D": 64,
+    "F": 65,
+    "T": 66,
+    "G": 67,
+    "Y": 68,
+    "H": 69,
+    "U": 70,
+    "J": 71,
+    "K": 72,
+    "O": 73,
+    "L": 74,
+    "P": 75,
+    "OemSemicolon": 76,
+    "OemQuotes": 77,
+    "OemCloseBrackets": 78,
+    "OemQuestion": 79
+  }
+}
