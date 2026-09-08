@@ -19,13 +19,13 @@ public partial class MainWindow : Window
     {
         InitializeComponent(); Piano.Config = config; Velocity.Value = config.Velocity; OctaveLabel.Text = $"移调 {config.Transpose:+0;-0;0}"; Piano.NoteChanged += (n, on) => _ = Guard(() => Voice(n, on));
         Loaded += async (_, _) => { DarkTitle.Apply(this); ready = true; await Guard(Connect); Activate(); Focus(); Keyboard.Focus(this); };
-        Deactivated += (_, _) => { if (!closing) _ = Guard(Release); };
+        Deactivated += (_, _) => { if (!closing && !RecordingBusy) _ = Guard(Release); };
         Closing += (_, e) => { if (closing) return; e.Cancel = true; closing = true; poll.Stop(); animation.Stop(); _ = FinishClose(); };
-        poll.Tick += async (_, _) => { if (polling || !connected || seeking) return; polling = true; try { await Poll(); } catch (Exception e) { connected = false; ConnectionLabel.Text = "● 音源已断开"; Status.Text = e.Message; loopArmed = false; playing = false; Piano.Held.Clear(); } finally { polling = false; } };
+        poll.Tick += async (_, _) => { if (polling || !connected || seeking || RecordingBusy) return; polling = true; try { await Poll(); } catch (Exception e) { connected = false; ConnectionLabel.Text = "● 音源已断开"; Status.Text = e.Message; loopArmed = false; playing = false; Piano.Held.Clear(); } finally { polling = false; } };
         animation.Tick += (_, _) => { if (seeking) return; double t = playing ? Math.Min(duration, position + clock.Elapsed.TotalSeconds) : position; Piano.PlaybackActive = playing; Piano.Position = t; Piano.InvalidateVisual(); Progress.Value = t; TimeLabel.Text = $"{Time(t)} / {Time(duration)}"; };
         volumeDebounce.Tick += async (_, _) => { volumeDebounce.Stop(); if (connected) await Guard(() => engine.Call("setParameters", new { list = new[] { new { id = "volume", text = Volume.Value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) } } })); };
     }
-    async Task FinishClose() { try { loopArmed = false; playing = false; await Release(); if (connected) { await engine.Call("midiStop"); await engine.Call("panic"); } config.Save(); } catch { } finally { engine.Dispose(); Close(); } }
+    async Task FinishClose() { try { recordingCancellation?.Cancel(); if (recordingTask != null) await recordingTask; loopArmed = false; playing = false; await Release(); if (connected) { await engine.Call("midiStop"); await engine.Call("panic"); } config.Save(); } catch { } finally { engine.Dispose(); Close(); } }
     async Task Guard(Func<Task> action) { try { await action(); } catch (Exception e) { Status.Text = "操作失败：" + e.Message; } }
     async Task Connect()
     {
@@ -53,18 +53,20 @@ public partial class MainWindow : Window
     bool Editing() => Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase || Presets.IsDropDownOpen;
     async void KeyDownHandler(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F9 && !e.IsRepeat && Keyboard.Modifiers == ModifierKeys.None) { e.Handled = true; await ToggleRecordingAsync(); return; }
+        if (RecordingBusy) { e.Handled = true; if (e.Key == Key.Escape) recordingCancellation?.Cancel(); return; }
         if (Editing() || Keyboard.Modifiers != ModifierKeys.None) return; var k = e.Key; if (k == Key.Escape) { e.Handled = true; await Guard(async () => { loopArmed = false; playing = false; await Release(); if (connected) { await engine.Call("midiStop"); await engine.Call("panic"); } Status.Text = "已紧急止音"; }); return; }
         if (e.IsRepeat) return;
         if (k == Key.Space) { e.Handled = true; await Guard(() => SetSustain(true)); return; }
         if (k == Key.Up || k == Key.Down) { e.Handled = true; await Guard(() => Transpose(k == Key.Up ? 12 : -12)); return; }
         if (config.Mapping.TryGetValue(k.ToString(), out int n) && !pressed.ContainsKey(k) && connected) { n += config.Transpose; if (n < 0 || n > 127) return; e.Handled = true; pressed[k] = n; await Guard(() => Voice(n, true)); }
     }
-    async void KeyUpHandler(object sender, KeyEventArgs e) { if (e.Key == Key.Space) { e.Handled = true; await Guard(() => SetSustain(false)); } if (pressed.Remove(e.Key, out int n)) { e.Handled = true; await Guard(() => Voice(n, false)); } }
+    async void KeyUpHandler(object sender, KeyEventArgs e) { if (RecordingBusy) { e.Handled = true; return; } if (e.Key == Key.Space) { e.Handled = true; await Guard(() => SetSustain(false)); } if (pressed.Remove(e.Key, out int n)) { e.Handled = true; await Guard(() => Voice(n, false)); } }
     async Task Transpose(int delta) { await Release(); config.Transpose = Math.Clamp(config.Transpose + delta, -24, 24); OctaveLabel.Text = $"移调 {config.Transpose:+0;-0;0}"; config.Save(); Piano.InvalidateVisual(); }
     void ExpressionChanged(object s, RoutedPropertyChangedEventArgs<double> e) { if (VelocityText == null) return; config.Velocity = (int)Velocity.Value; VelocityText.Text = config.Velocity.ToString(); if (ready) config.Save(); }
     void VolumeChanged(object s, RoutedPropertyChangedEventArgs<double> e) { if (VolumeText == null) return; VolumeText.Text = $"{Volume.Value:0} dB"; if (ready) { volumeDebounce.Stop(); volumeDebounce.Start(); } }
     async void PresetChanged(object s, SelectionChangedEventArgs e) { if (loadingPreset || !connected || Presets.SelectedItem is not Preset p) return; await Guard(async () => { await Release(); await engine.Call("loadPreset", new { name = p.Name, bank = p.Bank }); Status.Text = "当前音色：" + p.Name; }); }
-    async Task LoadSong(string path) { var song = await Task.Run(() => MidiSong.Load(path)); if (!connected) throw new InvalidOperationException("请先连接音源。"); loopArmed = false; playing = false; await Release(); await engine.Call("midiStop"); await engine.Call("loadMidiFile", new { path }); songPath = path; Piano.Song = song; position = 0; loopArmed = false; playing = false; duration = song.Duration; Progress.Maximum = Math.Max(.01, duration); SongLabel.Text = Path.GetFileNameWithoutExtension(path); Status.Text = $"{song.Tracks} 条音轨 · {song.Notes.Count:N0} 个音符 · 已载入，点击播放"; await Poll(); }
+    async Task LoadSong(string path) { if (RecordingBusy) throw new InvalidOperationException("录制期间请勿切换 MIDI。"); var song = await Task.Run(() => MidiSong.Load(path)); if (!connected) throw new InvalidOperationException("请先连接音源。"); loopArmed = false; playing = false; await Release(); await engine.Call("midiStop"); await engine.Call("loadMidiFile", new { path }); songPath = path; Piano.Song = song; position = 0; loopArmed = false; playing = false; duration = song.Duration; Progress.Maximum = Math.Max(.01, duration); SongLabel.Text = Path.GetFileNameWithoutExtension(path); Status.Text = $"{song.Tracks} 条音轨 · {song.Notes.Count:N0} 个音符 · 已载入，点击播放"; await Poll(); }
     async void OpenClick(object s, RoutedEventArgs e) { var d = new OpenFileDialog { Filter = "MIDI 文件|*.mid;*.midi", InitialDirectory = Path.Combine(Settings.Root, "Music") }; if (d.ShowDialog() == true) await Guard(() => LoadSong(d.FileName)); }
     async void FileDrop(object s, DragEventArgs e) { if (e.Data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0) await Guard(() => LoadSong(paths[0])); }
     async void DemoClick(object s, RoutedEventArgs e) => await Guard(() => LoadSong(Path.Combine(Settings.Root, "Music", "First Light.mid")));

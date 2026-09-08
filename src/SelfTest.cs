@@ -2,6 +2,45 @@ using System.IO;
 namespace Nocturne;
 public static class SelfTest
 {
+    public static async Task RunRecording()
+    {
+        using var engine = new Engine();
+        var settings = Settings.Load();
+        await engine.Connect(settings.PianoteqPath);
+        string folder = Path.Combine(Path.GetTempPath(), "NocturneRecordingTest-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var lines = new List<string>();
+        void Check(bool success, string message) { if (!success) throw new Exception(message); lines.Add("PASS: " + message); }
+        string source = Path.Combine(Settings.Root, "Music", "First Light.mid");
+        var original = Engine.First(await engine.Call("getInfo")).GetProperty("current_preset").GetProperty("name").GetString();
+        try
+        {
+            var recorder = new MidiAudioRecorder(engine);
+            string wave = await recorder.RecordAsync(settings.PianoteqPath, source, folder, null, CancellationToken.None);
+            var info = MidiAudioRecorder.InspectWave(wave);
+            Check(info.Channels == 2 && info.SampleRate == 48000 && info.BitsPerSample == 24, "native stereo PCM WAV, 48 kHz / 24-bit");
+            Check(info.Duration > 38.4, "full demo and natural piano tail: " + info.Duration.ToString("0.000") + " seconds");
+            byte[] bytes = File.ReadAllBytes(wave);
+            Check(bytes.Skip(bytes.Length / 4).Take(bytes.Length / 4).Any(b => b != 0), "render contains audible sample data");
+            var current = Engine.First(await engine.Call("getInfo")).GetProperty("current_preset").GetProperty("name").GetString();
+            Check(original == current, "preset snapshot preserves selected preset");
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            bool canceled = false;
+            try { await recorder.RecordAsync(settings.PianoteqPath, source, folder, null, cancellation.Token); }
+            catch (OperationCanceledException) { canceled = true; }
+            Check(canceled && Directory.GetFiles(folder).Length == 1, "cancel discards partial recording and preserves completed recording");
+            var seq = Engine.First(await engine.Call("getSequencerInfo"));
+            Check(!seq.GetProperty("is_playing").GetBoolean(), "cancel stops playback");
+            string broken = Path.Combine(folder, "broken.wav");
+            File.WriteAllBytes(broken, new byte[] { 0, 1, 2, 3 });
+            bool rejected = false;
+            try { MidiAudioRecorder.InspectWave(broken); } catch (InvalidDataException) { rejected = true; }
+            Check(rejected, "reject corrupt WAV");
+            File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "recording-test-results.txt"), lines);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
     public static async Task Run(bool integration)
     {
         var lines = new List<string>(); void Check(bool b, string msg) { if (!b) throw new Exception("FAIL: " + msg); lines.Add("PASS: " + msg); }

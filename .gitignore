@@ -3,3 +3,5 @@ src/obj/
 *.tmp
 Music/River Flows in You.mid
 App/test-results.txt
+App/recording-test-results.txt
+Recordings/
