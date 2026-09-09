@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111719"><title>Nocturne · 一起弹琴</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23111719'/%3E%3Ctext x='7' y='30' font-size='30' fill='%23b7dcc5'%3EN%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/piano.css"><script src="/piano.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><a class="wordmark" href="/">NOCTURNE<span>夜曲钢琴 / LIVE ROOM</span></a><div id="connection" role="status"><i></i><span id="status">尚未连接</span></div></header>
+    <section class="intro"><div><p class="eyebrow">A LITTLE ROOM FOR MUSIC</p><h1>此刻，听见你的指尖。</h1><p class="description">一架钢琴，一段留给音乐的时间。<br>轻触琴键，与主机共享同一个声音。</p></div><div class="sound"><div class="bars"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><span id="route">等待声音</span></div></section>
+    <section class="instrument" aria-label="钢琴演奏区">
+      <div class="toolbar"><div><span class="live-dot"></span><strong>演奏空间</strong><span class="range" id="range">C3 — B5</span></div><div class="octaves"><button id="lower" aria-label="降低一个八度">− 八度</button><button id="higher" aria-label="升高一个八度">+ 八度</button></div></div>
+      <div id="keyboard" aria-label="屏幕钢琴" aria-disabled="true"></div>
+      <div class="underkeys"><span id="hint">点击「进入琴房」，开启声音和琴键</span><span id="latency">LIVE AUDIO</span></div>
+    </section>
+    <div class="session"><button class="primary" id="join">进入琴房 <span>↗</span></button><button class="leave" id="leave" hidden>离开琴房</button><p id="message" role="status">支持多指和弦 · 横屏弹奏更舒展</p></div>
+    <footer><span>REAL PIANO. SHARED MOMENTS.</span><span>Pianoteq 音源由主机实时演奏</span></footer>
+  </main>
+</body>
+</html>

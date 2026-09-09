@@ -32,6 +32,7 @@ public partial class MainWindow
         volumeDebounce.Stop();
         try
         {
+            if (browserHost != null) await browserHost.SetInputEnabledAsync(false);
             // Let an already-running sequencer poll finish before the recording owns playback.
             while (polling) await Task.Delay(30, cancellation.Token);
             await Release();
@@ -52,6 +53,7 @@ public partial class MainWindow
         catch (Exception ex) { Status.Text = "录制失败：" + ex.Message; Status.ToolTip = ex.ToString(); }
         finally
         {
+            if (browserHost != null) await browserHost.SetInputEnabledAsync(true);
             playing = false; Piano.PlaybackActive = false; Piano.InvalidateVisual();
             recordingCancellation = null;
             RecordButton.Content = "● 录制整曲 · F9";

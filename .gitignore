@@ -5,3 +5,14 @@ Music/River Flows in You.mid
 App/test-results.txt
 App/recording-test-results.txt
 Recordings/
+remote-settings.json
+App/remote-test-results.txt
+tests/**/bin/
+tests/**/obj/
+tests/**/node_modules/
+tests/**/host.json
+tests/**/state.json
+tests/**/stop
+tests/**/disable
+tests/**/enable
+tests/**/*.png

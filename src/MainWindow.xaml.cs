@@ -25,7 +25,7 @@ public partial class MainWindow : Window
         animation.Tick += (_, _) => { if (seeking) return; double t = playing ? Math.Min(duration, position + clock.Elapsed.TotalSeconds) : position; Piano.PlaybackActive = playing; Piano.Position = t; Piano.InvalidateVisual(); Progress.Value = t; TimeLabel.Text = $"{Time(t)} / {Time(duration)}"; };
         volumeDebounce.Tick += async (_, _) => { volumeDebounce.Stop(); if (connected) await Guard(() => engine.Call("setParameters", new { list = new[] { new { id = "volume", text = Volume.Value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) } } })); };
     }
-    async Task FinishClose() { try { recordingCancellation?.Cancel(); if (recordingTask != null) await recordingTask; loopArmed = false; playing = false; await Release(); if (connected) { await engine.Call("midiStop"); await engine.Call("panic"); } config.Save(); } catch { } finally { engine.Dispose(); Close(); } }
+    async Task FinishClose() { try { recordingCancellation?.Cancel(); if (recordingTask != null) await recordingTask; if (browserHost != null) await browserHost.DisposeAsync(); loopArmed = false; playing = false; await Release(); if (connected) { await engine.Call("midiStop"); await engine.Call("panic"); } config.Save(); } catch { } finally { engine.Dispose(); Close(); } }
     async Task Guard(Func<Task> action) { try { await action(); } catch (Exception e) { Status.Text = "操作失败：" + e.Message; } }
     async Task Connect()
     {

@@ -14,6 +14,7 @@ Nocturne 是一款为 **Pianoteq 9** 制作的 Windows 桌面钢琴程序。它�
 - MIDI Format 0 / 1 自动演奏，支持多音轨、速度变化、暂停、跳转和循环
 - 音符瀑布与实时琴键高亮
 - F9 一键从头播放并录制整首 MIDI，自动保存纯钢琴 WAV 音频
+- 浏览器琴房：电脑、手机触摸琴键，接收主机当前钢琴声音；WebRTC 立体声优先，自动兼容 WebSocket 网页穿透
 - 触键力度、输出音量、延音踏板和上下八度控制
 - 窗口失焦自动释放手动音符，`Esc` 紧急止音
 - 单实例运行，避免重复打开控制窗口
@@ -22,7 +23,10 @@ Nocturne 是一款为 **Pianoteq 9** 制作的 Windows 桌面钢琴程序。它�
 
 - Windows 10 或 Windows 11
 - [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+- 同一下载页中的 **ASP.NET Core Runtime 8（x64）**，供内置浏览器服务使用
 - 已安装并激活的 Pianoteq 9
+
+浏览器共享的独立进程音频采集需要 **Windows 11**（或 Windows build 20348 以上），音源需使用 Windows 共享音频输出；ASIO / 独占输出不保证可被采集。
 
 默认音源路径为：
 
@@ -90,9 +94,31 @@ Nocturne 使用 Pianoteq 自带的 MIDI 播放器保证节拍稳定，同时解�
 
 如果已连接但没有声音，请检查 Pianoteq 的音频输出设备和 Windows 系统音量。
 
+## 浏览器琴房与内网穿透
+
+![浏览器钢琴](docs/browser-piano.png)
+
+[查看手机页面](docs/browser-piano-mobile.png)
+
+1. 主机连接 Pianoteq 后，点击右上角 **“浏览器共享” → “开启共享”**。
+2. 点击 **“本机浏览器试听”**，在网页点击 **“进入琴房”** 开启声音。鼠标和手机多指触摸均可弹奏，网页可切换八度。
+3. 你的内网穿透服务指向 **`http://127.0.0.1:18982`**，开启 **WebSocket** 支持，并为外网入口配置 **HTTPS**。
+4. 把邀请链接里的 `http://127.0.0.1:18982` 替换成公网域名，保留 `/#key=…`。访问者需要完整邀请链接。反向代理应保留原始 `Host`，以通过同源检查。
+5. **“关闭共享”** 会断开所有访问者并废除邀请密钥。默认不自动开启共享；勾选“允许局域网访问”才会监听所有网卡。
+
+网页只允许演奏琴键和接收声音，不能打开本机文件、修改音色、播放 MIDI 或操作录音。最多 8 位访问者共用同一架钢琴，听到的也包括主机正在播放的 MIDI。开始 F9 录制后，远程琴键暂停输入，但可继续聆听，结束后恢复。
+
+音频通过 Windows **Pianoteq 进程回环采集**，不采集麦克风或整个桌面的声音。WebRTC 使用 **48 kHz / 双声道 Opus，192 kbps，10 ms 音频帧**；琴键优先使用低延迟 DataChannel，带状态刷新、序号校验和断线自动松键。备用通道使用 WebSocket + PCM16 立体声，浏览器通过有界 AudioWorklet 缓冲播放，音频净带宽约 **1.54 Mbps / 人**。
+
+HTTP 穿透不等于 WebRTC 的 UDP 穿透。能直连时会自动使用 WebRTC；复杂 NAT 或运营商网络可以在共享窗口填写自己的 **TURN 地址、用户名和密码**。无法建立 WebRTC 时网页仍可使用备用通道，但丢包较多时 TCP 重传可能增加延迟。网页的“网络往返”只表示网络 RTT，不是完整触键到出声延迟。远距离网络与蓝牙耳机也会增加延迟，实时弹奏优先使用有线耳机。
+
+共享配置保存于 `remote-settings.json`，已加入 Git 忽略；邀请密钥仅在内存中生成，每次开启更换。没有分发 Pianoteq 程序或音色文件，使用 Pianoteq 仍受其自身授权条款约束。
+
+完整配置和排错见 [浏览器共享说明](docs/browser-sharing.md)。
+
 ## 从源码构建
 
-项目使用 C#、WPF 和 .NET 8，不依赖第三方 NuGet 包。
+项目使用 C#、WPF、ASP.NET Core 和 .NET 8。音频与 WebRTC 使用 NAudio.Wasapi、SIPSorcery 及其依赖；首次构建需联网还原 NuGet 包。
 
 ```powershell
 dotnet publish src/Nocturne.csproj -c Release -o App
@@ -136,6 +162,8 @@ Nocturne Piano/
 Nocturne 的原创代码以 [MIT License](LICENSE) 发布。
 
 MIT License 只适用于本仓库拥有版权的原创内容，不授予任何第三方软件、商标、音源、预设、MIDI 作品或其他第三方内容的权利。
+
+新增依赖遵循各自许可证，见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 和 [完整许可文本](third-party-licenses/)。其中 SIPSorcery 的许可包含额外使用限制，不能将该依赖描述为无附加限制的 MIT / BSD 软件。
 
 ## 商标与非隶属声明
 
